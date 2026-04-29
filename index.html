@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>더블하트 쿠팡 매출 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f3f4f7;--card:#fff;--border:#e2e5eb;--border2:#c8cdd8;
+  --text:#1a1d27;--text2:#5a6072;--text3:#9ba3b8;
+  --accent:#2563eb;--col-sep:#c0c7d6;
+  --font:'Noto Sans KR',sans-serif;--mono:'DM Mono',monospace;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;}
+
+.shell{display:grid;grid-template-rows:46px 38px auto 1fr;width:100vw;height:100vh;padding:10px 12px;gap:7px;}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.hdr-logo{font-size:14px;font-weight:700;}
+.hdr-logo span{color:var(--accent);}
+.hdr-sep{width:1px;height:18px;background:var(--border2);margin:0 14px;}
+.hdr-sub{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.hdr-badge{font-size:10px;color:var(--text3);font-family:var(--mono);background:var(--bg);padding:3px 10px;border-radius:5px;border:1px solid var(--border);}
+
+/* TABS */
+.tabs-row{display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0 12px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.tabs-label{font-size:10px;color:var(--text3);font-family:var(--mono);margin-right:6px;white-space:nowrap;}
+.tab{font-size:11px;font-weight:500;padding:5px 16px;border-radius:6px;cursor:pointer;border:1px solid transparent;color:var(--text2);background:transparent;font-family:var(--font);transition:all .15s;}
+.tab:hover{background:var(--bg);color:var(--text);}
+.tab.active{background:var(--bg);color:var(--text);border-color:var(--border2);font-weight:600;}
+
+/* MONTHLY SUMMARY */
+.mo-row{display:flex;gap:7px;}
+.mo-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 15px;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.mo-tag{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.mo-dot{width:8px;height:8px;border-radius:50%;}
+.mo-month-label{font-size:11px;font-weight:600;letter-spacing:.03em;}
+.mo-sales{font-size:21px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1;margin-bottom:9px;}
+.mo-meta{display:flex;gap:18px;}
+.mo-item{display:flex;flex-direction:column;gap:2px;}
+.mo-k{font-size:11px;color:var(--text3);letter-spacing:.02em;}
+.mo-v{font-size:13px;font-family:var(--mono);color:var(--text2);}
+.mo-pill{display:inline-block;font-size:13px;font-weight:700;font-family:var(--mono);padding:2px 9px;border-radius:5px;}
+.mo-accent{position:absolute;bottom:0;left:0;right:0;height:3px;}
+
+/* CONTENT */
+.content-all{display:grid;grid-template-columns:1fr 1fr;gap:7px;min-height:0;overflow:hidden;height:100%;}
+.content-month{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:7px;min-height:0;overflow:hidden;height:100%;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05);min-height:0;height:100%;}
+.card-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;flex-shrink:0;}
+.chart-wrap{flex:1;position:relative;min-height:0;}
+.chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important;}
+.tbl-wrap{flex:1;overflow:auto;}
+
+/* CTG TABLE (전체) */
+#ctgTbl{width:100%;border-collapse:collapse;font-size:11px;}
+#ctgTbl thead th{position:sticky;top:0;z-index:2;background:#f8f9fb;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:5px 8px;text-align:right;border-bottom:1px solid var(--border2);white-space:nowrap;}
+#ctgTbl thead th.tl{text-align:left;}
+#ctgTbl thead th.grp-hdr{text-align:center;border-left:2px solid var(--col-sep);padding:4px 8px;}
+#ctgTbl thead tr:nth-child(2) th{background:#f0f2f7;border-top:1px solid var(--border);}
+#ctgTbl thead tr:nth-child(2) th.sub-first{border-left:2px solid var(--col-sep);}
+#ctgTbl tbody td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;white-space:nowrap;}
+#ctgTbl tbody td.tl{text-align:left;color:var(--text);}
+#ctgTbl tbody tr:hover td{background:#f8f9fb;}
+#ctgTbl tbody td.month-sep{border-left:2px solid var(--col-sep);}
+#ctgTbl tr.total td{border-top:1px solid var(--border2);border-bottom:none;font-weight:700;color:var(--text);background:#f0f2f7;}
+#ctgTbl tr.total td.month-sep{border-left:2px solid var(--col-sep);}
+
+/* CTG TABLE (월별) */
+#ctgTblMonth{width:100%;border-collapse:collapse;font-size:11px;}
+#ctgTblMonth thead th{position:sticky;top:0;z-index:2;background:#f8f9fb;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:5px 8px;text-align:right;border-bottom:1px solid var(--border2);white-space:nowrap;}
+#ctgTblMonth thead th.tl{text-align:left;}
+#ctgTblMonth tbody td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;white-space:nowrap;}
+#ctgTblMonth tbody td.tl{text-align:left;color:var(--text);}
+#ctgTblMonth tbody tr:hover td{background:#f8f9fb;}
+#ctgTblMonth tr.total td{border-top:1px solid var(--border2);border-bottom:none;font-weight:700;color:var(--text);background:#f0f2f7;}
+
+/* TOP10 TABLE */
+#topTbl{width:100%;border-collapse:collapse;font-size:11px;}
+#topTbl thead th{position:sticky;top:0;z-index:2;background:#f8f9fb;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:4px 8px;border-bottom:1px solid var(--border2);text-align:right;white-space:nowrap;}
+#topTbl thead th.tl{text-align:left;}
+#topTbl tbody td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;}
+#topTbl tbody td.pnum{color:var(--text3);font-family:var(--mono);width:20px;text-align:left;}
+#topTbl tbody td.pname{text-align:left;color:var(--text);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#topTbl tbody tr:hover td{background:#f8f9fb;}
+
+/* DONUT LEGEND */
+.donut-legend{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;flex-shrink:0;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;min-width:0;}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.legend-name{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.legend-val{color:var(--text3);font-family:var(--mono);white-space:nowrap;}
+
+.num{font-family:var(--mono);}
+.rate-cell{font-family:var(--mono);color:var(--accent);font-weight:500;}
+.rate-neg{font-family:var(--mono);color:#e85d2f;font-weight:500;}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--mono);}
+.ph{background:rgba(22,163,74,.1);color:#15803d;}
+.pm{background:rgba(37,99,235,.1);color:#1d4ed8;}
+.pl{background:rgba(180,83,9,.1);color:#b45309;}
+.pn{background:rgba(220,38,38,.1);color:#dc2626;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="shell" id="dashboard">
+  <div class="hdr">
+    <div style="display:flex;align-items:center;">
+      <div class="hdr-logo">더블하트 <span>쿠팡</span> 매출 대시보드</div>
+      <div class="hdr-sep"></div>
+      <div class="hdr-sub">마켓플레이스 정산내역</div>
+    </div>
+    <div class="hdr-badge" id="hdrPeriod">—</div>
+  </div>
+
+  <div class="tabs-row">
+    <div class="tabs-label">조회 기간 :</div>
+    <div id="tabsContainer" style="display:flex;gap:5px;"></div>
+  </div>
+
+  <div class="mo-row" id="moRow"></div>
+
+  <!-- 전체비교: 2칸 -->
+  <div class="content-all" id="contentAll">
+    <div class="card">
+      <div class="card-title">월별 매출 추이</div>
+      <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="ctgTitleAll">카테고리별 월별 매출 · 마진 현황 (단위: 만원)</div>
+      <div class="tbl-wrap"><table id="ctgTbl"></table></div>
+    </div>
+  </div>
+
+  <!-- 월별: 3칸 -->
+  <div class="content-month" id="contentMonth" style="display:none;">
+    <div class="card">
+      <div class="card-title" id="donutTitle">카테고리 매출 비중</div>
+      <div class="chart-wrap" style="flex:0 0 160px;"><canvas id="donutChart"></canvas></div>
+      <div class="donut-legend" id="donutLegend"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="ctgTitleMonth">카테고리별 매출 · 마진 (단위: 만원)</div>
+      <div class="tbl-wrap"><table id="ctgTblMonth"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="topTitle">매출 Top 10 상품</div>
+      <div class="tbl-wrap"><table id="topTbl"></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══ 상수 ══ */
+const PALETTE     = ['#2563eb','#7c3aed','#db2777','#e85d2f','#d97706','#16a34a','#0891b2','#4f46e5','#be123c','#b45309','#15803d','#0369a1'];
+const DONUT_COLORS= ['#2563eb','#16a34a','#e85d2f','#7c3aed','#d97706','#0891b2','#db2777','#4f46e5','#b45309','#be123c','#15803d','#0369a1','#6b7280'];
+const MONTH_ORDER = ['01월','02월','03월','04월','05월','06월','07월','08월','09월','10월','11월','12월'];
+const CTG_ORDER   = ['젖꼭지','젖병+젖꼭지','젖병','쪽쪽이/치발기','이유실감','수유용품','위생용품','세탁용품','스킨케어','컵/이유식기','덴탈케어','유리젖병 3종','선케어','세정용품'];
+
+/* ══ 내장 데이터 ══ */
+const RAW_MONTHLY = {"01월":{"sales":218863830,"margin":27546385,"qty":10810,"rate":0.1259},"02월":{"sales":324593450,"margin":32530234,"qty":15602,"rate":0.1002},"03월":{"sales":318391650,"margin":46255287,"qty":14724,"rate":0.1453}};
+const RAW_CTG     = {"젖꼭지":{"01월":[84237320,14827892],"02월":[177873180,20006327],"03월":[165588230,29660617]},"젖병+젖꼭지":{"01월":[31047130,4951173],"02월":[28975100,4652590],"03월":[32923600,5012676]},"젖병":{"01월":[64294850,6338507],"02월":[81134440,5815578],"03월":[81309250,8020465]},"쪽쪽이/치발기":{"01월":[16036810,-220175],"02월":[15229190,136754],"03월":[14199250,556356]},"이유실감":{"01월":[11590510,925063],"02월":[11497790,1163795],"03월":[14053760,1548676]},"수유용품":{"01월":[2735000,73652],"02월":[4063400,216540],"03월":[2993800,198114]},"위생용품":{"01월":[4882100,-227006],"02월":[3133450,-160220],"03월":[4007580,320700]},"세탁용품":{"01월":[1050760,23910],"02월":[327200,-6241],"03월":[938100,109115]},"스킨케어":{"01월":[442140,3297],"02월":[374900,29574],"03월":[215200,34514]},"컵/이유식기":{"01월":[505110,94795],"02월":[519400,98572],"03월":[561580,162923]},"덴탈케어":{"01월":[462900,34725],"02월":[181800,27418],"03월":[82800,-6618]},"유리젖병 3종":{"01월":[1579200,720552],"02월":[1217200,545288],"03월":[1382400,621769]},"선케어":{"02월":[66400,4259],"03월":[136100,15976]}};
+const RAW_TOP10   = {"01월":[["더블하트 모유실감 3세대 PPSU 베이직 트윈팩 160ml+젖꼭지(2입), 3세대 SS, 화이트 (화이트 3세대 SS)",19680250,3311217,0.1683],["더블하트 소프트터치 모유실감 젖꼭지, M, 4개 (4개 M(3개월 이상))",5796260,985044,0.1699],["더블하트 모유실감 3세대 트윈팩 160ml/240ml 모음, 제뉴인화이트, 240ml, 2개 (2개 240ml 제뉴인화이트)",5569530,849290,0.1525],["와이드 젖꼭지 2개입 더블하트, SS, 2개 (2개 SS)",5096060,865464,0.1698],["더블하트 소프트터치 모유실감 젖꼭지, L, 1세트 (1세트 L)",4711920,862880,0.1831],["더블하트 소프트터치 모유실감 젖꼭지, LL, 4개 (4개 LL)",4558200,895543,0.1965],["더블하트 모유실감 3세대 PPSU 디어프렌즈 트리플팩, 서커스베어&블루밍가든&하늘을날꼬양, 240ml, 1세트",4484150,-148965,-0.0332],["더블하트 소프트터치 모유실감 젖꼭지 3세대, S (1개월 이상), 2개 (2개 S (1개월 이상))",4391440,772956,0.176],["더블하트 SofTouch 모유실감 PPSU 젖병 160ml, 2개 (2개 160ml)",4223230,611144,0.1447],["더블하트 모유실감 3세대 젖꼭지, M(3개월이상) (2개 M(3개월이상))",4109470,727615,0.1771]],"02월":[["더블하트 소프트터치 모유실감 젖꼭지, M(3개월 이상), 4개 (4개 M(3개월 이상))",25336230,982426,0.0388],["더블하트 소프트터치 모유실감 젖꼭지, S, 2개 (2개 S)",19469950,2586781,0.1329],["더블하트 모유실감 3세대 PPSU 베이직 트윈팩 160ml+젖꼭지(2입), 3세대 SS, 화이트 (화이트 3세대 SS)",17015400,2893746,0.1701],["더블하트 소프트터치 모유실감 젖꼭지, M, 6개 (6개 M)",16302000,931684,0.0572],["더블하트 소프트터치 모유실감 젖꼭지, L, 4개 (4개 L)",15329330,1511870,0.0986],["더블하트 소프트터치 모유실감 젖꼭지 2개입, L(6개월 이상), 1세트 (1세트 L(6개월 이상))",13632850,1380765,0.1013],["더블하트 모유실감 3세대 젖꼭지, M(3개월이상), 2개 (2개 M(3개월이상))",12306000,1258728,0.1023],["더블하트 소프트터치 모유실감 젖꼭지, SS(0개월~), 2개 (2개 SS(0개월~))",10307760,1556500,0.151],["더블하트 SofTouch 모유실감 PPSU 젖병 160ml, 240ml, 2개 (2개 240ml)",9506200,517737,0.0545],["더블하트 모유실감 3세대 트윈팩 160ml/240ml 모음, 제뉴인화이트, 240ml, 2개 (2개 240ml 제뉴인화이트)",8195000,446325,0.0545]],"03월":[["더블하트 모유실감 3세대 PPSU 베이직 트윈팩 160ml+젖꼭지(2입), 3세대 SS, 화이트 (화이트 3세대 SS)",21076200,3315845,0.1573],["더블하트 모유실감 3세대 젖꼭지, M(3개월이상), 2개 (2개 M(3개월이상))",19642000,2962855,0.1508],["더블하트 소프트터치 모유실감 젖꼭지, S, 2개 (2개 S)",19246000,3012320,0.1565],["더블하트 모유실감 3세대 PPSU 노꼭지 젖병 트윈팩, 제뉴인화이트, 240ml, 2개 (2개 240ml 제뉴인화이트)",18774000,2335674,0.1244],["더블하트 소프트터치 모유실감 젖꼭지, M(3개월 이상), 4개 (4개 M(3개월 이상))",16639550,3140746,0.1888],["더블하트 소프트터치 모유실감 젖꼭지, M, 6개 (6개 M)",13796830,2177672,0.1578],["더블하트 소프트터치 모유실감 젖꼭지 3세대, L(6개월 이상), 6개 (6개 L(6개월 이상))",12178120,2600891,0.2136],["더블하트 소프트터치 모유실감 젖꼭지, S(1개월이상), 4개 (4개 S(1개월이상))",10791810,2500710,0.2317],["더블하트 소프트터치 모유실감 젖꼭지 2개입 L(6개월 이상), 1세트 (1세트 L(6개월 이상))",8323000,1316267,0.1581],["더블하트 소프트터치 모유실감 젖꼭지, SS(0개월~), 2개 (2개 SS(0개월~))",7452550,1153529,0.1548]]};
+
+/* ══ 전역 상태 ══ */
+const MONTHS  = MONTH_ORDER.filter(m => RAW_MONTHLY[m]);
+const COLORS  = {}, MBGS = {};
+MONTHS.forEach((m,i)=>{ COLORS[m]=PALETTE[i%PALETTE.length]; MBGS[m]=PALETTE[i%PALETTE.length]+'14'; });
+
+let lineChartInst=null, donutChartInst=null;
+
+/* ══ 유틸 ══ */
+function comma(n){ return Math.round(n).toLocaleString('ko-KR'); }
+function toManW(n){
+  const man=Math.round(n/10000), abs=Math.abs(man), sign=man<0?'-':'';
+  if(abs>=10000){ const e=Math.floor(abs/10000),r=abs%10000; return r>0?`${sign}${e}억 ${r.toLocaleString('ko-KR')}만원`:`${sign}${e}억원`; }
+  return sign+abs.toLocaleString('ko-KR')+'만원';
+}
+function fmtSales(n){
+  const man=Math.round(n/10000);
+  if(man>=10000){ const e=Math.floor(man/10000),r=man%10000; return r>0?`${e}억 ${r.toLocaleString('ko-KR')}만원`:`${e}억원`; }
+  return man.toLocaleString('ko-KR')+'만원';
+}
+function fmtMan(n){ return Math.round(n/10000).toLocaleString('ko-KR')+'만원'; }
+function fmtR(r){ return (Math.round(r*1000)/10).toFixed(1)+'%'; }
+function pc(r){ return r>=.20?'ph':r>=.10?'pm':r>=0?'pl':'pn'; }
+function allCtgs(){ return [...CTG_ORDER.filter(c=>RAW_CTG[c]),...Object.keys(RAW_CTG).filter(c=>!CTG_ORDER.includes(c))]; }
+
+/* ══ 초기 렌더 ══ */
+function init(){
+  document.getElementById('hdrPeriod').textContent=`2026 · ${MONTHS[0]} — ${MONTHS[MONTHS.length-1]}`;
+  const tc=document.getElementById('tabsContainer'); tc.innerHTML='';
+  const makeTab=(m,label)=>{
+    const btn=document.createElement('button');
+    btn.className='tab'+(m==='all'?' active':'');
+    btn.dataset.m=m; btn.textContent=label;
+    btn.onclick=()=>go(m,btn); tc.appendChild(btn);
+  };
+  makeTab('all','전체 비교');
+  MONTHS.forEach(m=>makeTab(m,m));
+  buildMo('all');
+  showAll();
+}
+
+/* ══ 레이아웃 전환 ══ */
+function showAll(){
+  document.getElementById('contentAll').style.display='grid';
+  document.getElementById('contentMonth').style.display='none';
+  buildLineChart(); buildCtgAll();
+}
+function showMonth(m){
+  document.getElementById('contentAll').style.display='none';
+  document.getElementById('contentMonth').style.display='grid';
+  buildDonut(m); buildCtgMonth(m); buildTop(m);
+}
+
+/* ══ 월별 요약 카드 ══ */
+function buildMo(m){
+  const show3 = m==='all' ? MONTHS.slice(-3) : MONTHS.slice(Math.max(0,MONTHS.indexOf(m)-2),MONTHS.indexOf(m)+1);
+  document.getElementById('moRow').innerHTML=show3.map(mo=>{
+    const d=RAW_MONTHLY[mo]; if(!d) return '';
+    const c=COLORS[mo], rCls=d.rate>=.14?'ph':d.rate>=.10?'pm':'pn';
+    return `<div class="mo-card">
+      <div class="mo-tag"><div class="mo-dot" style="background:${c}"></div>
+        <span class="mo-month-label" style="color:${c}">● ${mo}</span></div>
+      <div class="mo-sales">${fmtSales(d.sales)}</div>
+      <div class="mo-meta">
+        <div class="mo-item"><div class="mo-k">마진</div><div class="mo-v">${fmtMan(d.margin)}</div></div>
+        <div class="mo-item"><div class="mo-k">마진율</div><span class="mo-pill ${rCls}">${fmtR(d.rate)}</span></div>
+        <div class="mo-item"><div class="mo-k">수량</div><div class="mo-v">${comma(d.qty)}건</div></div>
+      </div>
+      <div class="mo-accent" style="background:${c};"></div>
+    </div>`;
+  }).join('');
+}
+
+/* ══ 꺾은선 그래프 ══ */
+function buildLineChart(){
+  if(lineChartInst){ lineChartInst.destroy(); lineChartInst=null; }
+  const allSales = MONTH_ORDER.map(m => RAW_MONTHLY[m] ? Math.round(RAW_MONTHLY[m].sales/10000) : null);
+  lineChartInst = new Chart(document.getElementById('lineChart').getContext('2d'),{
+    type:'line',
+    data:{
+      labels: MONTH_ORDER,
+      datasets:[{
+        label:'매출', data:allSales,
+        borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,.08)',
+        tension:.35, pointRadius:MONTH_ORDER.map(m=>RAW_MONTHLY[m]?5:0),
+        pointBackgroundColor:'#2563eb', borderWidth:2.5, fill:true, spanGaps:false,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{filter:i=>i.raw!==null, callbacks:{label:c=>`매출: ${c.raw?.toLocaleString()}만원`}},
+      },
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#9ba3b8',font:{size:11}}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{color:'#9ba3b8',font:{size:10},callback:v=>v.toLocaleString()+'만'}},
+      }
+    }
+  });
+}
+
+/* ══ 도넛 그래프 ══ */
+function buildDonut(m){
+  if(donutChartInst){ donutChartInst.destroy(); donutChartInst=null; }
+  document.getElementById('donutTitle').textContent=`${m} 카테고리 매출 비중`;
+  const items=allCtgs().map(ctg=>({name:ctg,sales:(RAW_CTG[ctg]||{})[m]?.[0]||0})).filter(c=>c.sales>0).sort((a,b)=>b.sales-a.sales);
+  const total=items.reduce((s,c)=>s+c.sales,0);
+  donutChartInst=new Chart(document.getElementById('donutChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:items.map(c=>c.name),datasets:[{data:items.map(c=>c.sales),backgroundColor:DONUT_COLORS.slice(0,items.length),borderWidth:1,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${toManW(c.raw)} (${(c.raw/total*100).toFixed(1)}%)`}}}}
+  });
+  document.getElementById('donutLegend').innerHTML=items.map((c,i)=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${DONUT_COLORS[i]||'#ccc'}"></div>
+      <span class="legend-name">${c.name}</span>
+      <span class="legend-val">${(c.sales/total*100).toFixed(1)}%</span>
+    </div>`).join('');
+}
+
+/* ══ CTG 표 (전체비교 - 직전 3개월) ══ */
+function buildCtgAll(){
+  const viewMs=MONTHS.slice(-3);
+  let h=`<thead><tr>
+    <th class="tl" rowspan="2" style="vertical-align:middle;min-width:80px;background:#f0f2f7;">구분</th>
+    ${viewMs.map(mo=>`<th colspan="3" class="grp-hdr" style="color:${COLORS[mo]};background:${MBGS[mo]}">2026년 ${mo}</th>`).join('')}
+  </tr><tr>
+    ${viewMs.map(()=>`<th class="sub-first" style="text-align:right;">결제액</th><th style="text-align:right;">마진액</th><th style="text-align:right;">마진율</th>`).join('')}
+  </tr></thead><tbody>`;
+  const tot={}; viewMs.forEach(mo=>{tot[mo]=[0,0];});
+  allCtgs().forEach(ctg=>{
+    const d=RAW_CTG[ctg]||{};
+    if(!viewMs.some(mo=>d[mo]&&d[mo][0]>0)) return;
+    h+=`<tr><td class="tl">${ctg}</td>`;
+    viewMs.forEach(mo=>{
+      const[s,mg]=d[mo]||[0,0]; tot[mo][0]+=s; tot[mo][1]+=mg;
+      if(!s){h+=`<td class="num month-sep" style="color:#c8cdd8">—</td><td class="num" style="color:#c8cdd8">—</td><td style="color:#c8cdd8">—</td>`;return;}
+      h+=`<td class="num month-sep">${toManW(s)}</td><td class="num">${toManW(mg)}</td><td class="${mg<0?'rate-neg':'rate-cell'}">${fmtR(mg/s)}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`<tr class="total"><td class="tl">합계</td>`;
+  viewMs.forEach(mo=>{
+    const[ts,tm]=tot[mo];
+    h+=`<td class="num month-sep">${toManW(ts)}</td><td class="num">${toManW(tm)}</td><td class="${tm<0?'rate-neg':'rate-cell'}">${fmtR(ts?tm/ts:0)}</td>`;
+  });
+  h+=`</tr></tbody>`;
+  document.getElementById('ctgTbl').innerHTML=h;
+}
+
+/* ══ CTG 표 (월별) ══ */
+function buildCtgMonth(m){
+  document.getElementById('ctgTitleMonth').textContent=`${m} 카테고리별 매출 · 마진 (단위: 만원)`;
+  let h=`<thead><tr>
+    <th class="tl" style="min-width:80px;">구분</th><th>결제액</th><th>마진액</th><th>마진율</th>
+  </tr></thead><tbody>`;
+  let ts=0,tm=0;
+  allCtgs().forEach(ctg=>{
+    const[s,mg]=(RAW_CTG[ctg]||{})[m]||[0,0]; if(!s) return;
+    ts+=s; tm+=mg;
+    h+=`<tr><td class="tl">${ctg}</td><td class="num">${toManW(s)}</td><td class="num">${toManW(mg)}</td><td class="${mg<0?'rate-neg':'rate-cell'}">${fmtR(mg/s)}</td></tr>`;
+  });
+  h+=`<tr class="total"><td class="tl">합계</td><td class="num">${toManW(ts)}</td><td class="num">${toManW(tm)}</td><td class="${tm<0?'rate-neg':'rate-cell'}">${fmtR(ts?tm/ts:0)}</td></tr></tbody>`;
+  document.getElementById('ctgTblMonth').innerHTML=h;
+}
+
+/* ══ TOP10 표 ══ */
+function buildTop(m){
+  document.getElementById('topTitle').textContent=`${m} 매출 Top 10 상품`;
+  const rows=RAW_TOP10[m]||[];
+  let h=`<thead><tr>
+    <th class="tl" style="width:20px;">#</th>
+    <th class="tl">노출상품명(옵션명)</th>
+    <th>매출액</th><th>마진액</th><th>마진율</th>
+  </tr></thead><tbody>`;
+  rows.forEach(([name,s,mg,r],i)=>{
+    h+=`<tr><td class="pnum">${i+1}</td><td class="pname" title="${name}">${name}</td><td class="num">${toManW(s)}</td><td class="num">${toManW(mg)}</td><td><span class="pill ${pc(r)}">${fmtR(r)}</span></td></tr>`;
+  });
+  h+=`</tbody>`;
+  document.getElementById('topTbl').innerHTML=h;
+}
+
+/* ══ 탭 전환 ══ */
+function go(m,btn){
+  document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.style.color='';t.style.borderColor='';t.style.background='';});
+  btn.classList.add('active');
+  if(m!=='all'&&COLORS[m]){btn.style.color=COLORS[m];btn.style.borderColor=COLORS[m]+'66';btn.style.background=COLORS[m]+'0d';}
+  buildMo(m);
+  if(m==='all') showAll(); else showMonth(m);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
